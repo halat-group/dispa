@@ -1,0 +1,14 @@
+##TITLE= Audit trail, TopSpin 3.6.2
+##JCAMPDX= 5.01
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= Test user
+$$ C:/Users/david/Documents/Projects/CSM/2025-02 19F eNMR analysis/Simulated data/Two peaks/2180/pdata/1/auditp.txt
+##AUDIT TRAIL=  $$ (NUMBER, WHEN, WHO, WHERE, PROCESS, VERSION, WHAT)
+(   1,<2025-04-02 20:00:26.799 -0600>,<Test user>,<DALKOMHAN>,<proc1d>,<TopSpin 3.6.2>,
+      <efp LB = 0 FT_mod = 6 PKNL = 0 PHC0 = 0 PHC1 = 0 SI = 1M 
+       data hash MD5: 1M
+       59 BE 3C 0F 67 B7 BD B7 D4 F9 B9 B6 5F 0B 2E EB>)
+##END=
+
+$$ hash MD5
+$$ 67 C2 90 0D D0 13 30 5D 44 8C 56 DA 83 86 44 E5
