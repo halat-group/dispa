@@ -1,0 +1,17 @@
+##TITLE= Parameter file, TopSpin 3.6.2
+##JCAMPDX= 5.0
+##DATATYPE= Parameter Values
+##NPOINTS= 1	$$ modification sequence number
+##ORIGIN= Bruker BioSpin GmbH
+##OWNER= Test user
+$$ 2025-04-02 20:00:00.726 -0600  Test user@DALKOMHAN
+$$ C:/Users/david/Documents/Projects/CSM/2025-02 19F eNMR analysis/Simulated data/Two peaks/1010/pdata/1/proc
+$$ process C:\Bruker\TopSpin3.6.2\prog\mod\dataserver.exe
+##$LB= 0
+##$PKNL= no
+##$SF= 100
+##$SI= 1048576
+##$SIOLD= 1048576
+##$STSI= 0
+##$STSR= 0
+##END=
