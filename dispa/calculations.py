@@ -119,48 +119,32 @@ def magnitude_transformation(data):
     return magnitude
 
 
-def add_noise(data, snr):
-    """Function to add Gaussian noise to processed 1D NMR data.
+def calc_snr(data, nr):    
+    """function to calculate SNR of NMR datasets according to TopSpin formula.
     
     Parameters
 
     ----------
-    
-    data: object
-        NMRGlue numpy array data obejct from nmrglue.bruker.read_pdata or dispatools.utils.load_pdata
-    snr: float
-        desired SNR value for adding noise
+
+    data: numpy.array like
+        processed (FFT) 2D dataset 
+    nr: tuple
+        range of points to includea as noise region
 
     Returns
     
     -------
     
-    dsp0_rn : numpy.array
-        Real dimension data with added Gaussian noise
-    dsp0_in : numpy.array
-        Imaginary dimension data with added Gaussian noise
-    rnoise : numpy.array
-        Noise for the real dimension
-    inoise : numpy.array
-        Noise for the imaginary dimension
+    snr: float
+        calculated SNR for the data
     """
-    
-    # transform to magnitude mode
-    mag = magnitude_transformation(data)
-    maxi = np.max(np.abs(mag)) 
-    
-    # set length of data/noise
-    n = len(mag)
-    
-    # find noise scale 
-    s = (maxi / snr) / 2 
 
-    # draw noise arrays from Gaussian distribution
-    rnoise = np.random.normal(0, s, n)
-    inoise = np.random.normal(0, s, n)
+    mag = np.abs(data[0].real)
+    signal = np.max(mag)
+    noise = data[0][nr[0]:nr[1]]
+    rms_noise = np.sqrt(np.mean(noise.real**2))
     
-    # add noise to the real and imag. components
-    dsp0_rn = data[0] + rnoise
-    dsp0_in = data[1] + inoise
+
+    snr = (signal/rms_noise)/2
     
-    return dsp0_rn, dsp0_in, rnoise, inoise
+    return snr
