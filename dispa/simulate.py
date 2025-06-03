@@ -151,7 +151,7 @@ def addnoise(fid, dw, SNR):
     
     # Use magnitude spectrum to be phase-independent
     # Multiply by sqrt(2) to be consistent with previous SNR definition
-    maxi = np.max(np.abs(spec)) * np.sqrt(2)
+    maxi = np.max(np.abs(spec)) #* np.sqrt(2)
 
     # RMS of Gaussian noise (randn) is 1
     # SNR = max intensity / rms(noise) / 2
