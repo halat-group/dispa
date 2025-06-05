@@ -99,8 +99,8 @@ def find_saddle(params, data, ppm_region, plot=False, plotname="saddle-plot"):
     return saddle_ppm, pidx, (R_sp, I_sp)
     
     
-def optimize_rotation_rms_plot(data_path1, data_path2, ppm_region, step_deg=0.001, plot=True, plotname="RMS-Angles", origin=(0,0), angle_range=(-180,180), figsize=(8,4)):
-    """Optimize phase rotation of dataset 2 to match dataset 1 using RMS error. 
+def optimize_rotation_rms_file(data_path1, data_path2, ppm_region, step_deg=0.001, plot=True, plotname="RMS-Angles", origin=(0,0), angle_range=(-180,180), figsize=(8,4)):
+    """Optimize phase rotation of dataset 2 to match dataset 1 using RMS error, taking data directly from Bruker processed data directories. 
     Returns the angle with lowest RMS, and optionally plots RMS vs angle. 
     
     Parameters
@@ -262,8 +262,9 @@ def optimize_rotation_rms_plot(data_path1, data_path2, ppm_region, step_deg=0.00
     return best_angle, min_rms, angles_deg, rms_values, data_rotated
     
     
-def optimize_rotation_rms_fine(spec1, spec2, params1, params2, ppm_region, step_deg=0.1, angle_range=(-180,180)):
-    """Optimize phase rotation of dataset 2 to match dataset 1 using RMS error. 
+def optimize_rotation_rms_mem(spec1, spec2, params1, params2, ppm_region, plot=False, plotname="RMS-angles", origin=(0,0), 
+                               step_deg=0.1, angle_range=(-180,180), figsize=(8,4)):
+    """Optimize phase rotation of dataset 2 to match dataset 1 using RMS error for files loaded in memory as NMRGlue datasets. 
     
     Parameters
 
@@ -279,11 +280,19 @@ def optimize_rotation_rms_fine(spec1, spec2, params1, params2, ppm_region, step_
         metadata dictionary from nmgrglue.read_pdata/distpatools.read_pdata
     ppm_region: tuple
         Upper and lower limits for the ppm region of interest
+    plot: bool
+        Whether to generate the optional plots of optimized rotation
+    plotname: str
+    	Name for the plot file
+    origin: tuple
+        cartesian coordinates of origin for rotation plot
     step_deg: float
         Step size for sweeping angles after initial pass (can be non-integer)
     angle_range: tuple
     	range of angles to sweep during RMSE minimization
-    	
+    figsize: tuple
+    	figure size for optional plot (inches)
+    		
     Returns
     
     -------
@@ -376,9 +385,58 @@ def optimize_rotation_rms_fine(spec1, spec2, params1, params2, ppm_region, step_
     min_rms = np.min(rms_values)
     min_idx = np.where(rms_values == min_rms)
     best_angle = angles_deg[min_idx][0]
+    
 
+    # rotate data for vizualation - this should plot over relevant ppm range
+    data_rotated, dr_rotated, di_rotated = rotate(spec2, complex(origin[0], origin[1]), best_angle)
+  
+    # Plot the result
+    if plot==True:
+
+        #if show_frequency == True: #whether or not to add the 1D spectra panel
+
+        # set up plot and gridspec
+        fig = plt.figure(constrained_layout=True, figsize=(figsize[0],figsize[1]))
+        gs = fig.add_gridspec(nrows=1, ncols=3)
+
+        # generate the RMSE subplot
+        f_ax1 = fig.add_subplot(gs[0,0])
+        f_ax1.set_title('Optimal Angle (RMSE)')
+        f_ax1.plot(angles_deg_init, rms_values_init, color="midnightblue");
+        #f_ax1.scatter(angles_deg, rms_values, color="darkorange", s=2);
+        f_ax1.set_xlabel("Rotation Angle (degrees)")
+        f_ax1.set_ylabel("RMS Error")
+        plt.axvline(best_angle, lw=0.5, linestyle="--", color="blue")
+        ytick_range = list(f_ax1.get_yticks())
+        plt.text(x=best_angle+np.abs(0.05*best_angle), y=np.median(ytick_range), s=r"{}$^\circ$".format(np.round(best_angle, decimals=3)), color="blue")
         
-    return best_angle, min_rms, angles_deg, rms_values, angles_deg_init, rms_values_init
+
+        # generate the rotated polar subplot
+        f_ax2 = fig.add_subplot(gs[0,1])
+        f_ax2.scatter(dr_rotated[idx2], di_rotated[idx2], color="darkviolet", s=2, alpha=0.5)
+        f_ax2.scatter(R1[idx1], I1[idx1], color="orange", s=2, alpha=0.5)
+        f_ax2.scatter(R2[idx2], I2[idx2], color="teal", s=2, alpha=0.5)
+        
+        f_ax2.set_xlabel("Real (a.u.)")
+        f_ax2.set_ylabel("Imaginary (a.u.)")
+        f_ax2.set_title('Optimal Rotation')
+        plt.axhline(0, lw=1, linestyle="--", color="gray")
+        plt.axvline(0, lw=1, linestyle="--", color="gray")
+        plt.gca().set_aspect("equal")
+        plt.legend({"rotated":"darkviolet", "reference":"orange", "unrotated":"teal"})
+        
+        # generate a 1D frequency-domain spectra plot
+        f_ax3 = fig.add_subplot(gs[0,2])
+        f_ax3.scatter(ppm1[idx1], R1[idx1], color="orange", s=2, alpha=0.5)
+        f_ax3.scatter(ppm2[idx2], R2[idx2], color="teal", s=2, alpha=0.5)
+        f_ax3.set_title('Frequency Domain')
+        f_ax3.set_xlabel("ppm")
+        f_ax3.set_ylabel("Intensity (a.u.)")
+        
+        plt.savefig(plotname+".png", dpi=300)
+        plt.savefig(plotname+".pdf")
+
+    return best_angle, min_rms, angles_deg, rms_values, data_rotated, rms_values_init
     
     
     
@@ -566,7 +624,7 @@ def optimize_rotation_rms_NoFiles(spec1, spec2, ppm_region, step_deg=1, plot=Tru
         f_ax3.set_ylabel("Intensity (a.u.)")
         
         plt.savefig(plotname+".png", dpi=300)
-        #plt.savefig(plotname+".pdf")
+        plt.savefig(plotname+".pdf")
 
         
     return best_angle, min_rms, angles_deg, rms_values, data_rotated, rms_values_init
