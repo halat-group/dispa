@@ -10,7 +10,7 @@ from dispatools import overlay_plot
 
 # Use the parse_dataset() function to load the example dataset from specified directory
 op = "../example_data/OnePeak/"
-tol = parse_dataset(op)
+tol = parse_proc_dataset(op)
 
 # Create a list of colors to pass to the plotting function
 colors = ["darkcyan","darkorange","indigo","violet"]
