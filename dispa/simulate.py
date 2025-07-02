@@ -211,78 +211,90 @@ def fidcomb(fid):
     return fidc
     
     
+# upgraded version of this function that ensures TopSpin compatibility
 def write_fid_TS(fid, dw, bf, foldername):
-    """Function to write simulated FID to file in TopSpin format.
+    """Function to write simulated FID to file in TopSpin format (int32).
     
     Parameters
-
     ----------
-
     fid: numpy.array like
-        input noiseless FID
+        Input noiseless FID (complex)
     dw: float
-        dwell time (0.1 gives 10 Hz spectral width)
+        Dwell time (s)
     bf: float
-        base frequency (bf) in MHz
+        Base frequency (MHz)
     foldername: str
-        name of directory to write files 
+        Output folder name
     """
-    
-    # write FID in TopSpin format to folder,
-    # also generating relevant TS files to allow processing
-    # only additional param needed is base frequency (bf) in MHz
 
-    fidc = fidcomb(fid) # convert to alt real/imag format
+    import numpy as np
+    import os
+
+    def fidcomb(fid):
+        fidr = np.real(fid)
+        fidi = np.imag(fid)
+        fidc = np.zeros(len(fid) * 2, dtype=np.float64)
+        for i in range(len(fid)):
+            fidc[2*i] = fidr[i]
+            fidc[2*i+1] = fidi[i]
+        return fidc
+
+    fidc = fidcomb(fid)
     td = len(fidc)
-    
-    # scale FID to max = 2^31
-    fidc = fidc * (2**31/np.max(fidc))
-    
-    # write FID to folder
-    os.mkdir(foldername)
-    #fidc.astype('int').tofile(foldername + '/fid')
-    fidc.astype(np.int64).tofile(foldername + '/fid')
-    #fidc.tofile(foldername + '/fid')
-    
-    # write default acqu/acqus files
-    dw_TS = dw/2 * 10**6 # dw in TopSpin is actually half the "true" dwell time
-    sfo1 = int(bf)  # assume no offset (o1 = 0)
-    sw = int(10**6 / (2*dw_TS*sfo1)) # dw_TS in us, sfo1 in MHz
-    
-    acqu = ("##TITLE=" + "\n" + 
-            "##$AQ_mod= 1" + "\n" + 
-            "##$BF1= " + str(bf) +  "\n" + 
-            "##$BYTORDA= 0" + "\n" + 
-            "##$NUC1= <1H>" + "\n" + 
-            "##$PARMODE= 0" + "\n" + 
-            "##$SFO1= " + str(sfo1) + "\n" + 
-            "##$SW= " + str(sw) + "\n" + 
-            "##$TD= " + str(td) + "\n" + 
-            "##$NUCLEUS= <off> " + "\n" + 
-            "##$SOLVENT= <>" + "\n" + 
-            "##END=")
 
-    with open(foldername + '/acqu', 'w') as f_acqu:
+    os.makedirs(foldername, exist_ok=True)
+
+    fidc_max = np.max(np.abs(fidc))
+    if fidc_max == 0:
+        raise ValueError("FID has zero amplitude.")
+    fidc = fidc * (2**31 / fidc_max)
+    fidc = np.clip(fidc, -2**31, 2**31 - 1)
+    fidc.astype('<i4').tofile(os.path.join(foldername, 'fid'))  # little-endian int32
+
+    # Write acqu/acqus with DTYPA = 0
+    dw_TS = dw / 2 * 1e6
+    sfo1 = bf
+    sw = int(1e6 / (2 * dw_TS * sfo1))
+    
+    acqu = (
+        "##TITLE=\n"
+        "##$AQ_mod= 1\n"
+        f"##$BF1= {bf}\n"
+        "##$BYTORDA= 0\n"
+        "##$DTYPA= 0\n"
+        "##$NUC1= <1H>\n"
+        "##$PARMODE= 0\n"
+        f"##$SFO1= {sfo1}\n"
+        f"##$SW= {sw}\n"
+        f"##$TD= {td}\n"
+        "##$NUCLEUS= <off>\n"
+        "##$SOLVENT= <>\n"
+        "##END="
+    )
+
+    with open(os.path.join(foldername, 'acqu'), 'w') as f_acqu:
         f_acqu.write(acqu)
-    with open(foldername + '/acqus', 'w') as f_acqus:
-        f_acqus.write(acqu)        
-    
-    # write default proc/procs files
-    si = int(2**np.ceil(np.log(td)/np.log(2)))
-    sf = int(bf) # assume zero ref frequency (sr = 0)
-    
-    proc =  ("##TITLE= " + "\n" + 
-            "##DATMOD = 1" + "\n" + 
-            "##$LB= 0" + "\n" + 
-            "##$PKNL= no" + "\n" + 
-            "##$SF= " + str(sf) + "\n" + 
-            "##$SI= " + str(si) + "\n" + 
-            "##END=")
-    
-    foldernamep = foldername + "/pdata/1"
-    os.makedirs(foldernamep) # write into proc#1
-    
-    with open(foldernamep + '/proc', 'w') as f_proc:
+    with open(os.path.join(foldername, 'acqus'), 'w') as f_acqus:
+        f_acqus.write(acqu)
+
+    # Write proc/procs
+    si = int(2 ** np.ceil(np.log2(td))) * 8 # zero-filling x8
+    sf = bf
+
+    proc = (
+        "##TITLE=\n"
+        "##DATMOD = 1\n"
+        "##$LB= 0\n"
+        "##$PKNL= no\n"
+        f"##$SF= {sf}\n"
+        f"##$SI= {si}\n"
+        "##END="
+    )
+
+    pdata_path = os.path.join(foldername, "pdata", "1")
+    os.makedirs(pdata_path, exist_ok=True)
+
+    with open(os.path.join(pdata_path, 'proc'), 'w') as f_proc:
         f_proc.write(proc)
-    with open(foldernamep + '/procs', 'w') as f_procs:
+    with open(os.path.join(pdata_path, 'procs'), 'w') as f_procs:
         f_procs.write(proc)
