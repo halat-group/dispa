@@ -231,7 +231,7 @@ def optimize_rotation_rms_file(data_path1, data_path2, ppm_region, step_deg=0.00
 
         # set up plot and gridspec
         fig = plt.figure(constrained_layout=True, figsize=(figsize[0],figsize[1]))
-        gs = fig.add_gridspec(nrows=1, ncols=2)
+        gs = fig.add_gridspec(nrows=1, ncols=3)
 
         # generate the RMSE subplot
         f_ax1 = fig.add_subplot(gs[0,0])
