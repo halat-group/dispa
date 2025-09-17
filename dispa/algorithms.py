@@ -231,7 +231,7 @@ def optimize_rotation_rms_file(data_path1, data_path2, ppm_region, step_deg=0.00
 
         # set up plot and gridspec
         fig = plt.figure(constrained_layout=True, figsize=(figsize[0],figsize[1]))
-        gs = fig.add_gridspec(nrows=1, ncols=2)
+        gs = fig.add_gridspec(nrows=1, ncols=3)
 
         # generate the RMSE subplot
         f_ax1 = fig.add_subplot(gs[0,0])
@@ -257,6 +257,15 @@ def optimize_rotation_rms_file(data_path1, data_path2, ppm_region, step_deg=0.00
         plt.axvline(0, lw=1, linestyle="--", color="gray")
         plt.gca().set_aspect("equal")
         plt.legend({"rotated":"darkviolet", "reference":"orange", "unrotated":"teal"})
+        
+        
+        # generate a 1D frequency-domain spectra plot
+        f_ax3 = fig.add_subplot(gs[0,2])
+        f_ax3.scatter(ppm1[idx1], R1[idx1], color="orange", s=2, alpha=0.5)
+        f_ax3.scatter(ppm2[idx2], R2[idx2], color="teal", s=2, alpha=0.5)
+        f_ax3.set_title('Frequency Domain')
+        f_ax3.set_xlabel("ppm")
+        f_ax3.set_ylabel("Intensity (a.u.)")
         
         plt.savefig(plotname+".png", dpi=300)
         plt.savefig(plotname+".pdf")
