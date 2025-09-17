@@ -258,6 +258,15 @@ def optimize_rotation_rms_file(data_path1, data_path2, ppm_region, step_deg=0.00
         plt.gca().set_aspect("equal")
         plt.legend({"rotated":"darkviolet", "reference":"orange", "unrotated":"teal"})
         
+        
+        # generate a 1D frequency-domain spectra plot
+        f_ax3 = fig.add_subplot(gs[0,2])
+        f_ax3.scatter(ppm1[idx1], R1[idx1], color="orange", s=2, alpha=0.5)
+        f_ax3.scatter(ppm2[idx2], R2[idx2], color="teal", s=2, alpha=0.5)
+        f_ax3.set_title('Frequency Domain')
+        f_ax3.set_xlabel("ppm")
+        f_ax3.set_ylabel("Intensity (a.u.)")
+        
         plt.savefig(plotname+".png", dpi=300)
         plt.savefig(plotname+".pdf")
 
