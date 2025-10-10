@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import os
 import nmrglue as ng
 import pandas as pd
+from scipy.stats import linregress
 
 def find_saddle(params, data, ppm_region, plot=False, plotname="saddle-plot"):
     """Function to identify local saddle points between peaks in 1D NMR data.
@@ -908,3 +909,88 @@ def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, 
         plt.show()
 
     return expansions_p0, expansions_p10, min_err_focal, min_err_nops
+   
+    
+def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name):
+    """Function to identify local saddle points between peaks in 1D NMR data.
+    
+    Parameters
+
+    ----------
+
+    files: dict
+        dictionary of voltages (e.g. 0V, 50V) keyed to experiment file paths
+    ref_key: str
+        key in the files dict for the reference state (e.g. 0V)
+    vdlist: str
+        path to the vdlist file containing voltages
+    ppm_region: tuple
+        upper and lower limits for the ppm region of interest
+    exp_name: str
+        name of the experiment for labeling plot and CSV exports
+
+    Returns
+    
+    -------
+    
+    angles_df : pandas.DataFrame
+        df containing estimated values
+    regr : numpy.array
+        array of linear regression parameter estimates
+        
+    """
+
+    # Define a linear model for fitting regression
+    def linear_model(m, x, b):
+        y = m*x + b
+        return y
+
+    # Import the vdlist as a df
+    vdlist_data = pd.read_csv(vdlist, header=None)
+
+    # Convert uS values to V, incorporating 0.8uS threshold for 0V 
+    vdlist_data["V"] = [float(i.replace("u",""))*5 if float(i.replace("u","")) > 0.8 else float(i.replace("u",""))*0 for i in vdlist_data[0] ] #convert uS to V
+    vdlist_data.columns= ["uS", "V"]
+
+    # Transform the data to magnitude mode
+    angles = {}
+    for key in files.keys():
+        best_angle, min_rms, angles_deg, rms_values, data_rotated = optimize_rotation_rms_file(data_path1=files[ref_key], data_path2=files[key], 
+                                                                                                                ppm_region=ppm_region, step_deg=0.001, plot=False, 
+                                                                                                                plotname=key, origin=(0,0), angle_range=(-180,180), 
+                                                                                                                figsize=(12,4))
+        angles[key] = best_angle
+        
+
+    # Create a DataFrame version of angles
+    angles_df = pd.DataFrame.from_dict(angles, orient="index")
+    angles_df.columns = ["best_angle"]
+    
+    # Run linear regression of the the phase shifts against voltages (drop the ref-by-ref comparison)
+    regr = linregress(vdlist_data.drop(0)["V"], angles_df.drop("0V")["best_angle"])
+
+    # Generate predicted values using parameter estimates from regression 
+    y = linear_model(m=regr[0], x=vdlist_data.drop(0)["V"], b=regr[1])
+
+    ## Plot the voltage vs. phase shift mobility regression
+    plt.scatter(vdlist_data.drop(0)["V"], angles_df.drop("0V")["best_angle"], color="black")
+    plt.plot(vdlist_data.drop(0)["V"], y, color="red", lw=1)
+    
+    # get values for position of regression parameters label and plot text at coords
+    xpos = np.median(vdlist_data["V"]) - np.median(0.25*vdlist_data["V"])
+    ypos = np.median(angles_df["best_angle"]) - np.median(0.25*angles_df["best_angle"])    
+    plt.text(x=xpos, y=ypos, s= "$R^{2}$" + " = {}".format(np.round(regr[2], decimals=3)) + "; slope = {}".format(np.round(regr[0], decimals=3)) 
+             + "; intercept = {}".format(np.round(regr[1], decimals=3)), color="red"); 
+
+    # Apply axes labels, title, and plot name
+    plt.xlabel("Applied Voltage (V)")
+    plt.ylabel("Phase Shift (degrees)"); 
+    plt.title(exp_name)
+    plt.savefig(exp_name+"-PhaseShift-vs-Voltage.png", dpi=600)
+    plt.savefig(exp_name+"-PhaseShift-vs-Voltage.pdf")
+    
+    # Save a CSV file containing the phase shift
+    vdlist_data["best_angle"] = list(angles_df["best_angle"])
+    vdlist_data.to_csv(exp_name+".csv", sep=",", index=None)
+        
+    return vdlist_data, regr
