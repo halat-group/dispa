@@ -933,8 +933,8 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name):
     
     -------
     
-    angles_df : pandas.DataFrame
-        df containing estimated values
+    vdlist_data : pandas.DataFrame
+        df containing voltages and estimated phase shift angles
     regr : numpy.array
         array of linear regression parameter estimates
         
@@ -990,7 +990,7 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name):
     plt.savefig(exp_name+"-PhaseShift-vs-Voltage.pdf")
     
     # Save a CSV file containing the phase shift
-    vdlist_data["best_angle"] = list(angles_df["best_angle"])
+    vdlist_data["phase_shift"] = list(angles_df["best_angle"])
     vdlist_data.to_csv(exp_name+".csv", sep=",", index=None)
         
     return vdlist_data, regr
