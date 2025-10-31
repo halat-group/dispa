@@ -911,7 +911,7 @@ def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, 
     return expansions_p0, expansions_p10, min_err_focal, min_err_nops
    
     
-def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name):
+def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name, include_ref=True):
     """Function to identify local saddle points between peaks in 1D NMR data.
     
     Parameters
@@ -928,7 +928,8 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name):
         upper and lower limits for the ppm region of interest
     exp_name: str
         name of the experiment for labeling plot and CSV exports
-
+    include_ref: bool
+        whether or not to include the 0V reference point in the regression
     Returns
     
     -------
@@ -966,22 +967,40 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name):
     angles_df = pd.DataFrame.from_dict(angles, orient="index")
     angles_df.columns = ["best_angle"]
     
-    # Run linear regression of the the phase shifts against voltages (drop the ref-by-ref comparison)
-    regr = linregress(vdlist_data.drop(0)["V"], angles_df.drop("0V")["best_angle"])
+    if include_ref == True:
+        # Run linear regression of the the phase shifts against voltages (drop the ref-by-ref comparison)
+        regr = linregress(vdlist_data["V"], angles_df["best_angle"])
 
-    # Generate predicted values using parameter estimates from regression 
-    y = linear_model(m=regr[0], x=vdlist_data.drop(0)["V"], b=regr[1])
+        # Generate predicted values using parameter estimates from regression 
+        y = linear_model(m=regr[0], x=vdlist_data["V"], b=regr[1])
 
-    ## Plot the voltage vs. phase shift mobility regression
-    plt.scatter(vdlist_data.drop(0)["V"], angles_df.drop("0V")["best_angle"], color="black")
-    plt.plot(vdlist_data.drop(0)["V"], y, color="red", lw=1)
+        ## Plot the voltage vs. phase shift mobility regression
+        plt.scatter(vdlist_data["V"], angles_df["best_angle"], color="black")
+        plt.plot(vdlist_data["V"], y, color="red", lw=1)
     
-    # get values for position of regression parameters label and plot text at coords
-    xpos = np.median(vdlist_data["V"]) - np.median(0.25*vdlist_data["V"])
-    ypos = np.median(angles_df["best_angle"]) - np.median(0.25*angles_df["best_angle"])    
-    plt.text(x=xpos, y=ypos, s= "$R^{2}$" + " = {}".format(np.round(regr[2], decimals=3)) + "; slope = {}".format(np.round(regr[0], decimals=3)) 
-             + "; intercept = {}".format(np.round(regr[1], decimals=3)), color="red"); 
+        # get values for position of regression parameters label and plot text at coords
+        xpos = np.median(vdlist_data["V"]) - np.median(0.25*vdlist_data["V"])
+        ypos = np.median(angles_df["best_angle"]) - np.median(0.25*angles_df["best_angle"])    
+        plt.text(x=xpos, y=ypos, s= "$R^{2}$" + " = {}".format(np.round(regr[2], decimals=3)) + "; slope = {}".format(np.round(regr[0], decimals=3)) 
+        + "; intercept = {}".format(np.round(regr[1], decimals=3)), color="red"); 
 
+    else:
+        # Run linear regression of the the phase shifts against voltages (drop the ref-by-ref comparison)
+        regr = linregress(vdlist_data.drop(0)["V"], angles_df.drop("0V")["best_angle"])
+
+        # Generate predicted values using parameter estimates from regression 
+        y = linear_model(m=regr[0], x=vdlist_data.drop(0)["V"], b=regr[1])
+
+        ## Plot the voltage vs. phase shift mobility regression
+        plt.scatter(vdlist_data.drop(0)["V"], angles_df.drop("0V")["best_angle"], color="black")
+        plt.plot(vdlist_data.drop(0)["V"], y, color="red", lw=1)
+    
+        # get values for position of regression parameters label and plot text at coords
+        xpos = np.median(vdlist_data["V"]) - np.median(0.25*vdlist_data["V"])
+        ypos = np.median(angles_df["best_angle"]) - np.median(0.25*angles_df["best_angle"])    
+        plt.text(x=xpos, y=ypos, s= "$R^{2}$" + " = {}".format(np.round(regr[2], decimals=3)) + "; slope = {}".format(np.round(regr[0], decimals=3)) 
+        + "; intercept = {}".format(np.round(regr[1], decimals=3)), color="red"); 
+        
     # Apply axes labels, title, and plot name
     plt.xlabel("Applied Voltage (V)")
     plt.ylabel("Phase Shift (degrees)"); 
