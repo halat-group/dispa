@@ -952,8 +952,23 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name, include_ref=
     # Convert uS values to V, incorporating 0.8uS threshold for 0V 
     vdlist_data["V"] = [float(i.replace("u",""))*5 if float(i.replace("u","")) > 0.8 else float(i.replace("u",""))*0 for i in vdlist_data[0] ] #convert uS to V
     vdlist_data.columns= ["uS", "V"]
-
-    # Transform the data to magnitude mode
+    
+    # Get the PULPROG variable to determine voltage sign
+    dic_p, data_p = ng.bruker.read_pdata(dir=files[list(files.keys())[0]]), all_components=True)
+    pulprog = dic_p['acqus']["PULPROG"]
+    
+    if "_P_" in pulprog:
+        pulprog_V = 1        
+    elif "_N_" in pulprog:
+        pulprog_V = -1
+    else:
+        pulprog_V = 1
+        print("PULPROG variable missing - arbitrarily setting to +1")
+    
+    # Multiply vdlist by pulprog_V to get the correct sign
+    vdlist["V"] = pulprog_V*vdlist["V"]
+    
+    # Run the RMS optimization algorithm on each phase-shifted dataset - compare against 0V reference
     angles = {}
     for key in files.keys():
         best_angle, min_rms, angles_deg, rms_values, data_rotated = optimize_rotation_rms_file(data_path1=files[ref_key], data_path2=files[key], 
