@@ -954,7 +954,7 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name, include_ref=
     vdlist_data.columns= ["uS", "V"]
     
     # Get the PULPROG variable to determine voltage sign
-    dic_p, data_p = ng.bruker.read_pdata(dir=files[list(files.keys())[0]]), all_components=True)
+    dic_p, data_p = ng.bruker.read_pdata(dir=files[list(files.keys())[0]], all_components=True)
     pulprog = dic_p['acqus']["PULPROG"]
     
     if "_P_" in pulprog:
