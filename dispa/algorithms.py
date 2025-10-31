@@ -966,7 +966,7 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name, include_ref=
         print("PULPROG variable missing - arbitrarily setting to +1")
     
     # Multiply vdlist by pulprog_V to get the correct sign
-    vdlist["V"] = pulprog_V*vdlist["V"]
+    vdlist_data["V"] = pulprog_V*vdlist_data["V"]
     
     # Run the RMS optimization algorithm on each phase-shifted dataset - compare against 0V reference
     angles = {}
