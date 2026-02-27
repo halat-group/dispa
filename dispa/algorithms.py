@@ -8,6 +8,7 @@ import os
 import nmrglue as ng
 import pandas as pd
 from scipy.stats import linregress
+from pathlib import Path
 
 def find_saddle(params, data, ppm_region, plot=False, plotname="saddle-plot"):
     """Function to identify local saddle points between peaks in 1D NMR data.
@@ -950,12 +951,35 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name, include_ref=
     vdlist_data = pd.read_csv(vdlist, header=None)
 
     # Convert uS values to V, incorporating 0.8uS threshold for 0V 
-    vdlist_data["V"] = [float(i.replace("u",""))*5 if float(i.replace("u","")) > 0.8 else float(i.replace("u",""))*0 for i in vdlist_data[0] ] #convert uS to V
-    vdlist_data.columns= ["uS", "V"]
+    vdlist_data["V"] = [float(i.replace("u",""))*5 if float(i.replace("u","")) > 0.8 else float(i.replace("u",""))*0 for i in vdlist_data[0]]
+    vdlist_data.columns = ["uS", "V"]
     
     # Get the PULPROG variable to determine voltage sign
-    dic_p, data_p = ng.bruker.read_pdata(dir=files[list(files.keys())[0]], all_components=True)
-    pulprog = dic_p['acqus']["PULPROG"]
+    first_dir = Path(files[list(files.keys())[0]])
+
+    acqus_candidates = [
+        first_dir / "acqus",
+        first_dir.parent / "acqus",
+        first_dir.parents[1] / "acqus",
+    ]
+
+    read_kwargs = {
+        "dir": str(first_dir),
+        "all_components": True,
+    }
+
+    for acqus_path in acqus_candidates:
+        if acqus_path.exists():
+            read_kwargs["acqus_files"] = [str(acqus_path)]
+            break
+
+    dic_p, data_p = ng.bruker.read_pdata(**read_kwargs)
+
+    pulprog = ""
+    for key, value in dic_p.items():
+        if isinstance(value, dict) and "PULPROG" in value:
+            pulprog = value["PULPROG"]
+            break
     
     if "_P_" in pulprog:
         pulprog_V = 1        
