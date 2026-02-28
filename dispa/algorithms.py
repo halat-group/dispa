@@ -1052,3 +1052,176 @@ def estimate_mobility(files, ref_key, vdlist, ppm_region, exp_name, include_ref=
     vdlist_data.to_csv(exp_name+".csv", sep=",", index=None)
         
     return vdlist_data, regr
+    
+
+def estimate_snr_error(focal_width, focal_center, parameters, output_folder, theta_shift, ppm_roi, num_reps=200, plot=True, write_sims=False):
+    """Function to estimate the error in phase-shift estimates resulting from SNR.
+    
+    Parameters
+
+    ----------
+
+    focal_width: float
+        Width in Hz of focal peak
+    focal_center: float
+        Center (in Hz) of focal peak
+    parameters: dict
+        Dictionary containing simulation parameters (e.g. {"n":4096, "dw":0.001, "SNR":1000, "bf":100, "SW_p":1000, "OFFSET":5, "nc_proc":11})
+    output_folder: str
+        name of folder to store outputs
+    theta_shift: float
+        Phase shift angle for focal peak (degrees)
+    ppm_roi: tuple
+        ROI for peak in ppm
+    num_reps: int
+        Number of replicate simulations with added noise
+    plot: bool
+        Whether or not to generate and save optional plots of spectra and ROI error curves
+    write_sims: bool
+        Whether or not to write the replicate noisy simulations to Bruker format files
+    Returns
+    
+    -------
+    
+    ps_estimates : list
+        List containing phase shift angle estimates (in deg) for reach rep
+    ps_errors : list
+        List containing phase shift angle absolute errors (in deg) for reach rep  
+    mean_angle : float
+        Mean estimate of the phase shift angle from the replicated simulations 
+    mean_abs_err : float
+        Mean Absolute Error of phase shift estimates from the replicated simulations 
+    """
+    
+    ### Simulate comparable no-noise spectra based on user-input parameters
+    
+    # Make sure the user specifies focal_center as the peak of interest
+    
+    # Create descriptive expnos for write function to save files
+    expno = "FocalPeakShift" + str(focal_center) + "_" + "FocalPeakWidth" + str(focal_width) + "_" + "PhaseShift" + "0deg"
+    expno_ps = "FocalPeakShift" + str(focal_center) + "_" + "FocalPeakWidth" + str(focal_width) + "_" + "PhaseShift" + str(theta_shift)+ "deg"
+    
+    ### Simulate data for peaks with phase shift ### 
+
+    # Generate FID with a single phase-shifted peak
+    fid1 = fidgen(focal_center, focal_width, parameters["n"], parameters["dw"]) #this is the focal peak, which will have phase shift
+        
+    # Remove DC
+    fid1[0] = fid1[0]/2
+        
+    # Apply phase shift
+    fid1 = phaseshift(fid1, parameters["dw"], theta_shift)
+
+    # Assign folder path for this experiment
+    foldername = output_folder +"/" + str(expno_ps)
+    
+    # Write to TopSpin format
+    write_fid_TS(fid1, parameters["dw"], parameters["bf"], foldername)
+
+    # Add noise at the specified SNR for specified number of replicates
+    # Assign folder path for the noisy FID files
+    noisedir = output_folder +"/" + str(expno_ps) + "/noise_added"
+    
+    rep_ps_fids = {}
+    for i in range(0, num_reps):
+        # add gaussian noise to the base FID
+        fid_i = addnoise(fid1, parameters["dw"], parameters["SNR"])
+        rep_ps_fids[i] = fid_i
+
+        if write_sims == True:
+            # Write to TopSpin format
+            write_fid_TS(fid_i, parameters["dw"], parameters["bf"], noisedir+"/"+str(i))
+        else:
+            pass
+    
+    
+    ### Simulate data for peaks without phase shift ###
+    
+    # Generate FID with a single unshifted peak
+    fid0 = fidgen(focal_center, focal_width, parameters["n"], parameters["dw"]) #this is the focal peak, but without phase shift
+        
+    # Remove DC
+    fid0[0] = fid0[0]/2
+        
+    # Apply phase shift
+    fid0 = phaseshift(fid0, parameters["dw"], 0)
+
+    # Assign folder path for this experiment
+    foldername = output_folder +"/" + str(expno)
+    
+    # Write to TopSpin format
+    write_fid_TS(fid0, parameters["dw"], parameters["bf"], foldername)
+
+    # Add noise at the specified SNR for specified number of replicates
+    # Assign folder path for the noisy FID files
+    noisedir0 = output_folder +"/" + str(expno) + "/noise_added"
+    
+    rep_ns_fids = {}
+    for j in range(0, num_reps):
+        # add gaussian noise to the base FID
+        fid_j = addnoise(fid0, parameters["dw"], parameters["SNR"])
+        rep_ns_fids[j] = fid_j
+        
+        if write_sims == True:
+            # Write to TopSpin format
+            write_fid_TS(fid_j, parameters["dw"], parameters["bf"], noisedir0+"/"+str(j))
+        else:
+            pass
+
+
+    ## Iterate over paired noisy datasets and estimate phase shifts
+    # Set up lists to hold the estimates from each iteration
+    ps_estimates = []
+    ps_errors = []
+    
+    for key in rep_ps_fids.keys():
+        # Get the fft of paired FIDs with and without phase shift
+        fid_fft_ps, f_fft_ps = specgen(rep_ps_fids[key], dw=parameters["dw"])
+        fid_fft_ns, f_fft_ns = specgen(rep_ns_fids[key], dw=parameters["dw"])
+
+        test_data_ps = np.array([fid_fft_ps.real, fid_fft_ps.imag])
+        test_data_ns = np.array([fid_fft_ns.real, fid_fft_ns.imag])
+        
+        # Initial estimate point with seed roi
+        best_angle, min_rms, angles_deg, rms_values, data_rotated, rms_values_init = optimize_rotation_rms_NoFiles(spec1=test_data_ns, spec2=test_data_ps, 
+                                                                                                                                     ppm_region=ppm_roi,step_deg=0.001,
+                                                                                                                                     plot=False, 
+                                                                                                                                     plotname="NULL0", figsize=(12,4), 
+                                                                                                                                     nc_proc=parameters["nc_proc"], 
+                                                                                                                                     offset_ppm=parameters["OFFSET"], 
+                                                                                                                                     dw=parameters["dw"])   
+        # Store estimates 
+        ps_estimates.append(best_angle)
+        ps_errors.append(theta_shift - best_angle)
+
+    # Calculate mean angle estimate and mean absolute error
+    mean_angle = np.mean(ps_estimates)
+    mean_abs_err = np.mean(ps_errors)
+    
+
+    if plot == True:
+        ## Plot the distributions of errors for simulated data ##
+        ppm = get_ppm_scale_manual(offset_ppm=parameters["OFFSET"], sw_Hz=1/parameters["dw"], sf_MHz=parameters["bf"], si=len(test_data_ns[0]))
+
+        fid_fft_ps, f_fft_ps = specgen(fid1, dw=parameters["dw"])
+        fid_fft_ns, f_fft_ns = specgen(fid0, dw=parameters["dw"])
+        
+        plt.plot(ppm, fid_fft_ps.real, color="blue", alpha=0.8)
+        plt.plot(ppm, fid_fft_ns.real, color="red", alpha=0.8)
+        plt.xlim(focal_center/parameters["bf"]+(0.25*focal_width), focal_center/parameters["bf"]-(0.25*focal_width))
+        plt.xlabel("ppm")
+        plt.ylabel("Intensity")
+        plt.savefig(output_folder + "/simulated-base-spectra{}.png".format(theta_shift), dpi=300)
+        plt.show()
+
+        
+        plt.hist(ps_errors, color="darkgray")
+        plt.xlabel("Absolute Error (deg) Relative to Groundtruth Phase Shift")
+        plt.axvline(mean_abs_err, ls="--", color="red", lw=1)
+        plt.text(mean_abs_err + np.abs(0.25*mean_abs_err), 5, "MAE="+str(np.round(mean_abs_err, decimals=3)), color="red",)
+        
+        plt.savefig(output_folder + "/simulated-spectra-error-distribution{}.png".format(theta_shift), dpi=300)
+
+    return ps_estimates, ps_errors, mean_angle, mean_abs_err
+    
+    
