@@ -1,4 +1,4 @@
-from dispa import load_pdata
+from .utils import load_pdata
 from scipy.interpolate import interp1d
 from scipy.signal import argrelmin
 import numpy as np

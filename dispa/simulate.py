@@ -1,4 +1,5 @@
-from dispa import load_pdata, get_ppm_scale, magnitude_transformation, rotate
+from .utils import load_pdata
+from .calculations import get_ppm_scale, magnitude_transformation, rotate
 from scipy.interpolate import interp1d
 from scipy.signal import argrelmin
 import numpy as np
