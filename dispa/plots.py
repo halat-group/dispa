@@ -2,7 +2,7 @@ import numpy as np
 import nmrglue as ng
 import matplotlib.pyplot as plt
 import pandas as pd
-from dispa import get_ppm_scale
+from .calculations import get_ppm_scale
 
 def polar_plot(data, filename, color, frame=True, units="a.u."):
     """ Function to plot the DISPA polar plot using real and imaginary components of NMR signal. 

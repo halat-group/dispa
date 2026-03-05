@@ -1,5 +1,6 @@
-from dispa import load_pdata, get_ppm_scale, get_ppm_scale_manual, magnitude_transformation, rotate
-from dispa import fidgen, phaseshift, specgen, addnoise, fidcomb, write_fid_TS
+from .utils import load_pdata, 
+from .calculations import get_ppm_scale, get_ppm_scale_manual, magnitude_transformation, rotate
+from .simulate import fidgen, phaseshift, specgen, addnoise, fidcomb, write_fid_TS
 from scipy.interpolate import interp1d
 from scipy.signal import argrelmin
 import numpy as np
