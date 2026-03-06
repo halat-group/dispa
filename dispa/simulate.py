@@ -106,11 +106,14 @@ def specgen(fid, dw):
     n = len(fid); # number of points in FID
     
     sp = (1/dw)/(n-1) # freq spacing in spectral points
-    #f = np.arange(-(1/dw)/2-sp/2, (1/dw)/2-sp/2, sp) # spectral frequency
-    # this includes a point at 0 freq, and one extra point at neg freq
 
+    # this includes a point at 0 freq, and one extra point at neg freq
     f = [-(1/dw)/2 - sp/2 + i * sp for i in range(n)]  # spectral frequency
         
+    # First point correction (Remove DC)
+    fid[0] = fid[0]/2
+    
+    # Run FFT on the corrected FID
     specpre = np.fft.fft(fid)
     
     spec = np.zeros_like(specpre)
@@ -281,7 +284,8 @@ def write_fid_TS(fid, dw, bf, foldername):
     # Write proc/procs
     si = int(2 ** np.ceil(np.log2(td))) * 8 # zero-filling x8
     sf = bf
-
+    fcor = 0.5
+    
     proc = (
         "##TITLE=\n"
         "##DATMOD = 1\n"
@@ -289,6 +293,7 @@ def write_fid_TS(fid, dw, bf, foldername):
         "##$PKNL= no\n"
         f"##$SF= {sf}\n"
         f"##$SI= {si}\n"
+        f"##$FCOR= {fcor}\n"
         "##END="
     )
 
