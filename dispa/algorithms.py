@@ -713,10 +713,6 @@ def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, 
     fid1 = fidgen(focal_center, focal_width, parameters["n"], parameters["dw"]) #this is the focal peak, which will have phase shift
     fid2 = fidgen(center2, width2, parameters["n"], parameters["dw"])
         
-    # Remove DC
-    fid1[0] = fid1[0]/2
-    fid2[0] = fid2[0]/2
-
     # alter the intensity of the second peak
     if focal_intensity == max(intensities):
         fid1 = fid1*intensity_ratio
@@ -742,10 +738,6 @@ def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, 
     # Generate both peaks
     fid3 = fidgen(focal_center, focal_width, parameters["n"], parameters["dw"]) #this is the focal peak, but without phase shift
     fid4 = fidgen(center2, width2, parameters["n"], parameters["dw"])
-        
-    # Remove DC
-    fid3[0] = fid3[0]/2
-    fid4[0] = fid4[0]/2
 
     # alter the intensity of the second peak
     if focal_intensity == max(intensities):
@@ -1107,9 +1099,6 @@ def estimate_snr_error(focal_width, focal_center, parameters, output_folder, the
     # Generate FID with a single phase-shifted peak
     fid1 = fidgen(focal_center, focal_width, parameters["n"], parameters["dw"]) #this is the focal peak, which will have phase shift
         
-    # Remove DC
-    fid1[0] = fid1[0]/2
-        
     # Apply phase shift
     fid1 = phaseshift(fid1, parameters["dw"], theta_shift)
 
@@ -1140,10 +1129,7 @@ def estimate_snr_error(focal_width, focal_center, parameters, output_folder, the
     
     # Generate FID with a single unshifted peak
     fid0 = fidgen(focal_center, focal_width, parameters["n"], parameters["dw"]) #this is the focal peak, but without phase shift
-        
-    # Remove DC
-    fid0[0] = fid0[0]/2
-        
+               
     # Apply phase shift
     fid0 = phaseshift(fid0, parameters["dw"], 0)
 
