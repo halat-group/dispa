@@ -102,6 +102,8 @@ def specgen(fid, dw):
         
     """
     
+    fid = np.asarray(fid).copy()
+    
     # carrier implicitly assumed 0 Hz
     n = len(fid); # number of points in FID
     
