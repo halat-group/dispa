@@ -6,7 +6,7 @@ Example:
 Create a side-by-side plot showing the 1D spectra and matched 2D DISPA polar plots.
 
 ```python
-from dispatools import overlay_plot
+from dispa import overlay_plot
 
 # Use the parse_dataset() function to load the example dataset from specified directory
 op = "../example_data/OnePeak/"
