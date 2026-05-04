@@ -645,7 +645,7 @@ def optimize_rotation_rms_NoFiles(spec1, spec2, ppm_region, step_deg=1, plot=Tru
     return best_angle, min_rms, angles_deg, rms_values, data_rotated, rms_values_init
   
     
-def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, focal_center, center2, parameters, output_folder, theta_ps, plot=True):
+def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, focal_center, center2, parameters, output_folder, theta_ps, snr=10000, plot=True):
     """Function to estimate the error in phase-shift estimates caused by peak overlap via simulation.
     
     Parameters
@@ -670,6 +670,8 @@ def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, 
         name of folder to store outputs
     theta_ps: float
         Phase shift angle for focal peak (degrees)
+    snr: float
+        Signal-to-Noise ratio for dataset (default=10000)
     plot: bool
         Whether or not to generate and save optional plots of spectra and ROI error curves
         
@@ -723,9 +725,10 @@ def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, 
     fid1 = phaseshift(fid1, parameters["dw"], theta_shift)
     fid2 = phaseshift(fid2, parameters["dw"], theta_noshift)
 
-    # Combine the fids - do not add noise (assume max possible SNR)
+    # Combine the fids and add noise (default to very high SNR)
     fid = fid1 + fid2
-
+    fid = addnoise(fid, parameters["dw"], snr)
+    
     # Assign folder path for this experiment
     foldername = output_folder +"/" + str(expno_ps)
     
@@ -749,15 +752,15 @@ def estimate_separation_error(focal_width, width2, focal_intensity, intensity2, 
     fid3 = phaseshift(fid3, parameters["dw"], theta_noshift)
     fid4 = phaseshift(fid4, parameters["dw"], theta_noshift)
 
-    # Combine the fids - do not add noise (assume max possible SNR)
+    # Combine the fids and add noise (default to very high SNR)
     fid_ns = fid3 + fid4
-
+    fid_ns = addnoise(fid_ns, parameters["dw"], snr)
+    
     # Assign folder path for this experiment
     foldername = output_folder +"/" + str(expno)
     
     # Write to TopSpin format
     write_fid_TS(fid_ns, parameters["dw"], parameters["bf"], foldername)
-
 
     # Load the simualate spectra back from files into memory - store in experiments dictionary
     experiments = {}
