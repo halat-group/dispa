@@ -1182,7 +1182,7 @@ def estimate_snr_error(focal_width, focal_center, parameters, output_folder, the
                                                                                                                                      dw=parameters["dw"])   
         # Store estimates 
         ps_estimates.append(best_angle)
-        ps_errors.append(theta_shift - best_angle)
+        ps_errors.append(np.abs(theta_shift - best_angle))
 
     # Calculate mean angle estimate and mean absolute error
     mean_angle = np.mean(ps_estimates)
